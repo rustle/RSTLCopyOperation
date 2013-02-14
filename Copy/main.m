@@ -8,12 +8,32 @@
 #import <Foundation/Foundation.h>
 #import "RSTLCopyOperation.h"
 
+@interface Delegate : NSObject <RSTLCopyOperationDelegate>
+
+@end
+
+@implementation Delegate
+
+- (void)copyOperationWillStart:(RSTLCopyOperation *)copyOperation
+{
+	NSLog(@"%s", __func__);
+}
+
+- (void)copyOperationDidFinish:(RSTLCopyOperation *)copyOperation
+{
+	NSLog(@"%s - Result Code: %i", __func__, copyOperation.resultCode);
+}
+
+@end
+
 int main(int argc, const char * argv[])
 {
     NSString *fromPath = [@"~/Desktop/Copy1" stringByExpandingTildeInPath];
     NSString *toPath = [@"~/Desktop/Copy2" stringByExpandingTildeInPath];
     
-    RSTLCopyOperation *copyOperation = [[RSTLCopyOperation alloc] initWithFromPath:fromPath toPath:toPath];
+	RSTLCopyOperation *copyOperation = [[RSTLCopyOperation alloc] initWithFromPath:fromPath toPath:toPath];
+	Delegate *delegate = [Delegate new];
+	copyOperation.delegate = delegate;
     
     NSOperationQueue *queue = [NSOperationQueue new];
     [queue addOperation:copyOperation];

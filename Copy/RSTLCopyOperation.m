@@ -6,20 +6,16 @@
 //
 
 #import "RSTLCopyOperation.h"
-
 #include "copyfile.h"
 
 @interface RSTLCopyOperation ()
 
-@property (nonatomic) int resultCode;
+@property RSTLCopyState state;
+@property int resultCode;
 
 @end
 
 @implementation RSTLCopyOperation
-{
-    copyfile_state_t _copyfileState;
-    RSTLCopyState _state;
-}
 
 - (instancetype)initWithFromPath:(NSString *)fromPath toPath:(NSString *)toPath
 {
@@ -137,25 +133,32 @@ static int RSTLCopyFileCallback(int what, int stage, copyfile_state_t state, con
 
 - (void)main
 {
-    NSLog(@"Will start copying");
-    
-    _copyfileState = copyfile_state_alloc();
+	id<RSTLCopyOperationDelegate> delegate = self.delegate;
+	if ([delegate respondsToSelector:@selector(copyOperationWillStart:)])
+	{
+		[delegate copyOperationWillStart:self];
+	}
+	
+	copyfile_state_t copyfileState = copyfile_state_alloc();
     
     const char *fromPath = [self.fromPath fileSystemRepresentation];
     const char *toPath = [self.toPath fileSystemRepresentation];
     
-    _state = RSTLCopyInProgress;
+    self.state = RSTLCopyInProgress;
     
-    copyfile_state_set(_copyfileState, COPYFILE_STATE_STATUS_CB, &RSTLCopyFileCallback);
-    copyfile_state_set(_copyfileState, COPYFILE_STATE_STATUS_CTX, (__bridge void *)self);
+    copyfile_state_set(copyfileState, COPYFILE_STATE_STATUS_CB, &RSTLCopyFileCallback);
+    copyfile_state_set(copyfileState, COPYFILE_STATE_STATUS_CTX, (__bridge void *)self);
     
-    self.resultCode = copyfile(fromPath, toPath, _copyfileState, [self flags]);
+    self.resultCode = copyfile(fromPath, toPath, copyfileState, [self flags]);
     
-    _state = RSTLCopyFinished;
+    self.state = (self.resultCode == 0) ? RSTLCopyFinished : RSTLCopyFailed;
     
-    copyfile_state_free(_copyfileState);
+    copyfile_state_free(copyfileState);
     
-    NSLog(@"Did finish copying with return code %d", self.resultCode);
+	if ([delegate respondsToSelector:@selector(copyOperationDidFinish:)])
+	{
+		[delegate copyOperationDidFinish:self];
+	}
 }
 
 @end
